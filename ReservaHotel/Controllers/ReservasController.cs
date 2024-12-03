@@ -7,22 +7,25 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ReservaHotel.Data;
 using ReservaHotel.Models;
+using ReservaHotel.Services;
 
 namespace ReservaHotel.Controllers
 {
     public class ReservasController : Controller
     {
-        private readonly ApplicationDbContext _context;
 
-        public ReservasController(ApplicationDbContext context)
+        private readonly IReservaService _reservaService;
+
+        public ReservasController(IReservaService reservaService) 
         {
-            _context = context;
+            _reservaService = reservaService;
         }
 
         // GET: Reservas
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Reserva.ToListAsync());
+            var reservas = await _reservaService.ObtenerTodasAsync();
+            return View(reservas);
         }
 
         // GET: Reservas/Details/5
@@ -33,8 +36,7 @@ namespace ReservaHotel.Controllers
                 return NotFound();
             }
 
-            var reserva = await _context.Reserva
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var reserva = await _reservaService.ObtenerPorIdAsync(id.Value);
             if (reserva == null)
             {
                 return NotFound();
@@ -46,6 +48,13 @@ namespace ReservaHotel.Controllers
         // GET: Reservas/Create
         public IActionResult Create()
         {
+            ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
+                .Cast<EstadoReserva>()
+                .Select(e => new SelectListItem
+                {
+                    Text = e.ToString(),
+                    Value = ((int)e).ToString()
+            });
             return View();
         }
 
@@ -54,14 +63,27 @@ namespace ReservaHotel.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,NombreCliente,FechaInicio,FechaFin,NumeroHabitacion,Estado")] Reserva reserva)
+        public async Task<IActionResult> Create([Bind("NombreCliente,FechaInicio,FechaFin,NumeroHabitacion,Estado")] Reserva reserva)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(reserva);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                var succes = await _reservaService.CrearAsync(reserva);
+                if (succes) 
+                {
+                    TempData["Success"] = "Reserva creada exitosamente";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                ModelState.AddModelError("", "La habitacion no esta disponible para las fechas seleccionadas o las fechas son invalidas.");
             }
+
+            ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
+                .Cast<EstadoReserva>()
+                .Select(e => new SelectListItem
+                {
+                    Text = e.ToString(),
+                    Value = ((int)e).ToString()
+                });
             return View(reserva);
         }
 
@@ -73,11 +95,19 @@ namespace ReservaHotel.Controllers
                 return NotFound();
             }
 
-            var reserva = await _context.Reserva.FindAsync(id);
+            var reserva = await _reservaService.ObtenerPorIdAsync(id.Value);
             if (reserva == null)
             {
                 return NotFound();
             }
+
+            ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
+                .Cast<EstadoReserva>()
+                .Select(e => new SelectListItem
+                {
+                    Text = e.ToString(),
+                    Value = ((int)e).ToString()
+                });
             return View(reserva);
         }
 
@@ -95,24 +125,24 @@ namespace ReservaHotel.Controllers
 
             if (ModelState.IsValid)
             {
-                try
+                var success = await _reservaService.ActualizarAsync(reserva);
+                if (success) 
                 {
-                    _context.Update(reserva);
-                    await _context.SaveChangesAsync();
+                    TempData["Success"] = "Reserva actualizada exitosamente. ";
+                    return RedirectToAction(nameof(Index));
                 }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ReservaExists(reserva.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+
+                ModelState.AddModelError("", "La habitacion no esta disponible para las fechas seleccionadas o las fechas son invalidas. ");
+               
             }
+
+            ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
+                .Cast<EstadoReserva>()
+                .Select(e => new SelectListItem
+                {
+                    Text = e.ToString(),
+                    Value = ((int)e).ToString()
+                });
             return View(reserva);
         }
 
@@ -124,8 +154,7 @@ namespace ReservaHotel.Controllers
                 return NotFound();
             }
 
-            var reserva = await _context.Reserva
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var reserva = await _reservaService.ObtenerPorIdAsync(id.Value);
             if (reserva == null)
             {
                 return NotFound();
@@ -139,19 +168,9 @@ namespace ReservaHotel.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var reserva = await _context.Reserva.FindAsync(id);
-            if (reserva != null)
-            {
-                _context.Reserva.Remove(reserva);
-            }
-
-            await _context.SaveChangesAsync();
+            await _reservaService.EliminarAsync(id);
+            TempData["Success"] = "Reserva eliminada exitosamente.";
             return RedirectToAction(nameof(Index));
-        }
-
-        private bool ReservaExists(int id)
-        {
-            return _context.Reserva.Any(e => e.Id == id);
         }
     }
 }
