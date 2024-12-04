@@ -8,7 +8,7 @@ namespace ReservaHotel.Services
 {
     public interface IReservaService
     {
-        Task<List<Reserva>> ObtenerTodasAsync();
+        Task<IEnumerable<Reserva>> ObtenerTodasAsync();
         Task<Reserva?> ObtenerPorIdAsync(int id);
         Task<bool> CrearAsync(Reserva reserva);
         Task<bool> ActualizarAsync(Reserva reserva);
@@ -26,7 +26,7 @@ namespace ReservaHotel.Services
             _context = context;
         }
 
-        public async Task<List<Reserva>> ObtenerTodasAsync()
+        public async Task<IEnumerable<Reserva>> ObtenerTodasAsync()
         {
             return await _context.Reserva.ToListAsync();
         }

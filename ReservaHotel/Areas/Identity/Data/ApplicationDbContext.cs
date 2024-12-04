@@ -9,7 +9,7 @@ using ReservaHotel.Models;
 
 namespace ReservaHotel.Areas.Identity.Data
 {
-    public class ApplicationDbContext : IdentityDbContext
+    public class ApplicationDbContext : IdentityDbContext<Usuario>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) 
         {
@@ -21,11 +21,16 @@ namespace ReservaHotel.Areas.Identity.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Reserva>()
-                .HasOne(r => r.User)
+            modelBuilder.Entity<Reserva>(entity =>
+            {
+                entity.HasOne(r => r.User)
                 .WithMany()
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(r => new { r.NumeroHabitacion, r.FechaInicio, r.FechaFin });
+            });
+                
         }
     }
 }

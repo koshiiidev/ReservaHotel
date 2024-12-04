@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -10,19 +12,30 @@ using ReservaHotel.Areas.Identity.Data;
 using ReservaHotel.Models;
 using ReservaHotel.Services;
 
+
 namespace ReservaHotel.Controllers
 {
     public class ReservasController : Controller
     {
 
         private readonly IReservaService _reservaService;
+        private readonly UserManager<Usuario> _userManager;
+        private readonly IUserService _userService;
 
-        public ReservasController(IReservaService reservaService) 
+        public ReservasController(
+            IReservaService reservaService, 
+            UserManager<Usuario> userManager,
+            IUserService userService)
         {
-            _reservaService = reservaService;
+            _reservaService = reservaService ?? throw new ArgumentNullException(nameof(reservaService));
+            _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+            _userService = userService;
         }
 
+
+
         // GET: Reservas
+        [Authorize(Roles = "Admin, Cliente")]
         public async Task<IActionResult> Index()
         {
             var reservas = await _reservaService.ObtenerTodasAsync();
@@ -48,7 +61,7 @@ namespace ReservaHotel.Controllers
 
         // GET: Reservas/Create
 
-        [Authorize(Roles = "Cliente")]
+        [Authorize(Roles = "Admin, Cliente")]
         public IActionResult Create()
         {
             ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
@@ -66,10 +79,20 @@ namespace ReservaHotel.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin, Cliente")]
         public async Task<IActionResult> Create([Bind("NombreCliente,FechaInicio,FechaFin,NumeroHabitacion,Estado")] Reserva reserva)
         {
-            if (ModelState.IsValid)
+           if (ModelState.IsValid)
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if(string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized();
+                }
+
+                reserva.UserId = userId;
+                
+
                 var succes = await _reservaService.CrearAsync(reserva);
                 if (succes) 
                 {
@@ -90,8 +113,40 @@ namespace ReservaHotel.Controllers
             return View(reserva);
         }
 
-        // GET: Reservas/Edit/5
-        [Authorize(Roles = "Cliente")]
+        private async Task<bool> VerificarRolUsuario()
+        {
+            if (User == null) return false;
+
+            var user = await _userManager.GetUserAsync(User as ClaimsPrincipal);
+            if (user == null) return false;
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return roles.Contains("Cliente") || roles.Contains("Admin");
+        }
+
+        [Authorize]
+        public async Task<IActionResult> VerificarRol()
+        {
+            var user = await _userManager.GetUserAsync(User as ClaimsPrincipal);
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Json(new
+            {
+                userId = user.Id,
+                userName = user.UserName,
+                roles = roles
+            });
+        }
+
+
+
+            // GET: Reservas/Edit/5
+            //[Authorize(Roles = "Cliente")]
+            [Authorize(Roles = "Admin, Cliente")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -129,6 +184,13 @@ namespace ReservaHotel.Controllers
 
             if (ModelState.IsValid)
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized();
+                }
+                reserva.UserId = userId;
+
                 var success = await _reservaService.ActualizarAsync(reserva);
                 if (success) 
                 {
@@ -150,7 +212,7 @@ namespace ReservaHotel.Controllers
             return View(reserva);
         }
 
-        [Authorize(Roles = "Cliente")]
+        [Authorize(Roles = "Admin, Cliente")]
         // GET: Reservas/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
@@ -177,5 +239,9 @@ namespace ReservaHotel.Controllers
             TempData["Success"] = "Reserva eliminada exitosamente.";
             return RedirectToAction(nameof(Index));
         }
+
+
+        
+       
     }
 }
