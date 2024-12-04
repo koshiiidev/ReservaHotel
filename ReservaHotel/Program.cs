@@ -14,7 +14,6 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
                 .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
 
-
 //builder.Services.AddDefaultIdentity<Usuario>(options => options.SignIn.RequireConfirmedAccount = false).AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddScoped<IReservaService, ReservaService>();
 
