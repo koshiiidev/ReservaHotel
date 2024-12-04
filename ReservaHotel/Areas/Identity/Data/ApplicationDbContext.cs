@@ -15,7 +15,7 @@ namespace ReservaHotel.Areas.Identity.Data
         {
         }
 
-        public DbSet<Reserva> Reservas { get; set; }
+        public DbSet<Reserva> Reserva { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
