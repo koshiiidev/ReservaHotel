@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using ReservaHotel.Data;
+using ReservaHotel.Areas.Identity.Data;
 using ReservaHotel.Models;
 
 
