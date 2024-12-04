@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Identity;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ReservaHotel.Models;
 
@@ -41,6 +43,10 @@ public partial class Reserva
     [Required(ErrorMessage = "El estado es obligatorio")]
     [Display(Name = "Estado")]
     public EstadoReserva Estado { get; set; }
+    
+    public required string UserId {  get; set; }
+    [ForeignKey("UserId")]
+    public required IdentityUser User { get; set; }
 
     public bool EsReservaValida()
     {

@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using ReservaHotel.Data;
+using ReservaHotel.Areas.Identity.Data;
 using ReservaHotel.Models;
 using ReservaHotel.Services;
 
@@ -46,6 +47,8 @@ namespace ReservaHotel.Controllers
         }
 
         // GET: Reservas/Create
+
+        [Authorize(Roles = "Cliente")]
         public IActionResult Create()
         {
             ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
@@ -88,6 +91,7 @@ namespace ReservaHotel.Controllers
         }
 
         // GET: Reservas/Edit/5
+        [Authorize(Roles = "Cliente")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -146,6 +150,7 @@ namespace ReservaHotel.Controllers
             return View(reserva);
         }
 
+        [Authorize(Roles = "Cliente")]
         // GET: Reservas/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {

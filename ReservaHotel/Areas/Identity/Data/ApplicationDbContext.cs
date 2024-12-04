@@ -5,24 +5,28 @@ using Microsoft.EntityFrameworkCore;
 using ReservaHotel.Areas.Identity.Data;
 using ReservaHotel.Models;
 
-namespace ReservaHotel.Data;
 
 
-
-public class ApplicationDbContext : IdentityDbContext<Usuario>
+namespace ReservaHotel.Areas.Identity.Data
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
+    public class ApplicationDbContext : IdentityDbContext
     {
-    }
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) 
+        {
+        }
 
-    protected override void OnModelCreating(ModelBuilder builder)
-    {
-        base.OnModelCreating(builder);
-        // Customize the ASP.NET Identity model and override the defaults if needed.
-        // For example, you can rename the ASP.NET Identity table names and more.
-        // Add your customizations after calling base.OnModelCreating(builder);
-    }
+        public DbSet<Reserva> Reservas { get; set; }
 
-public DbSet<ReservaHotel.Models.Reserva> Reserva { get; set; } = default!;
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Reserva>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
 }
+
