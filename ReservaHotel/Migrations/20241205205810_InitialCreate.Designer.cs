@@ -12,8 +12,8 @@ using ReservaHotel.Areas.Identity.Data;
 namespace ReservaHotel.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241203233627_UpdateReservaModel")]
-    partial class UpdateReservaModel
+    [Migration("20241205205810_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -238,11 +238,11 @@ namespace ReservaHotel.Migrations
                     b.Property<int>("Estado")
                         .HasColumnType("int");
 
-                    b.Property<DateOnly>("FechaFin")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("FechaFin")
+                        .HasColumnType("datetime2");
 
-                    b.Property<DateOnly>("FechaInicio")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("FechaInicio")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("NombreCliente")
                         .IsRequired()
@@ -252,9 +252,17 @@ namespace ReservaHotel.Migrations
                     b.Property<int>("NumeroHabitacion")
                         .HasColumnType("int");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
-                    b.ToTable("Reserva");
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("NumeroHabitacion", "FechaInicio", "FechaFin");
+
+                    b.ToTable("Reservas");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -306,6 +314,17 @@ namespace ReservaHotel.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ReservaHotel.Models.Reserva", b =>
+                {
+                    b.HasOne("ReservaHotel.Areas.Identity.Data.Usuario", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }

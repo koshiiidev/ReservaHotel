@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using ReservaHotel.Areas.Identity.Data;
 using System;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace ReservaHotel.Models;
     Cancelada
 
 }
-   
+
 
 
 public partial class Reserva
@@ -30,41 +31,57 @@ public partial class Reserva
 
     [Required(ErrorMessage ="La fecha de inicio es obligatoria")]
     [Display(Name = "Fecha de Inicio")]
-    public DateOnly FechaInicio { get; set; }
+    [DataType(DataType.Date)]
+    public DateTime FechaInicio { get; set; }
 
     [Required(ErrorMessage = "La fecha de fin es obligatoria")]
     [Display(Name = "Fecha de Fin")]
-    public DateOnly FechaFin { get; set; }
+    [DataType(DataType.Date)]
+    public DateTime FechaFin { get; set; }
 
     [Required(ErrorMessage = "El numero de habitacion es obligatorio")]
     [Range(1, int.MaxValue, ErrorMessage = "El numero de habitacion debe ser mayor que 0")]
     [Display(Name = "Numero de habitacion")]
+    [Column(TypeName = "int")]
     public int NumeroHabitacion { get; set; }
 
     [Required(ErrorMessage = "El estado es obligatorio")]
     [Display(Name = "Estado")]
+    //[BindNever]
     public EstadoReserva Estado { get; set; }
 
     [Required]
-    public required string UserId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
 
     [ForeignKey("UserId")]
-    public required Usuario User { get; set; } = null!;
+    public Usuario? User { get; set; } = null;
 
     public bool EsReservaValida()
     {
-        if (FechaFin < FechaInicio)
+        if (FechaInicio == default || FechaFin == default)
         {
             return false;
         }
 
-        if (FechaInicio < DateOnly.FromDateTime(DateTime.Today))
+        
+        if (FechaInicio.Date < DateTime.Today)
+        {
+            return false;
+        }
+
+        
+        if (FechaFin.Date < FechaInicio.Date)
+        {
+            return false;
+        }
+
+        
+        if (NumeroHabitacion <= 0)
         {
             return false;
         }
 
         return true;
-
     }
     
     

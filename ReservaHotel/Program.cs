@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 
 //using ReservaHotel.Data;
 using ReservaHotel.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("ApplicationDbContextConnection") ?? throw new InvalidOperationException("Connection string 'ApplicationDbContextConnection' not found.");
 
@@ -15,9 +16,11 @@ var connectionString = builder.Configuration.GetConnectionString("ApplicationDbC
 builder.Services.AddDbContext<ApplicationDbContext>(options => 
                 options.UseSqlServer(builder.Configuration.GetConnectionString("ApplicationDbContextConnection")));
 
+builder.Services.AddRazorPages();
+builder.Services.AddControllersWithViews();
 
 //Configuracion Identity
-builder.Services.AddDefaultIdentity<Usuario>(options =>
+builder.Services.AddIdentity<Usuario, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
     options.Password.RequireDigit = true;
@@ -26,8 +29,20 @@ builder.Services.AddDefaultIdentity<Usuario>(options =>
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequiredLength = 6;
 })
-.AddRoles<IdentityRole>()
-.AddEntityFrameworkStores<ApplicationDbContext>();
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
+
+
+//Configuracion de cockies 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.LoginPath = new PathString("/Identity/Account/Login");
+    options.AccessDeniedPath = new PathString("/Identity/Account/AccessDenied");
+    options.SlidingExpiration = true;
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+});
 
 //Configuracion SecurityStamp
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
@@ -48,7 +63,10 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IReservaService, ReservaService>();
 
-builder.Services.AddControllersWithViews();
+
+
+
+
 var app = builder.Build();
 
 // Roles iniciales
@@ -96,7 +114,10 @@ using (var scope = app.Services.CreateScope())
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
 }
+
+app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();

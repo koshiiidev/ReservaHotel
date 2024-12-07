@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "DIxGg/f+9EYoIb3eJa4UBF+fzjlVzmxDUSd2CvXjSQo=",
+  "Hash": "Z6ezn0UKbAVBsGijT6bh3bmES39SEh/vgQ1564/eGQY=",
   "Source": "ReservaHotel",
   "BasePath": "_content/ReservaHotel",
   "Mode": "Default",
@@ -1231,6 +1231,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\favicon.ico"
+    },
+    {
+      "Identity": "F:\\Repos\\Reserva Hotel\\ReservaHotel\\ReservaHotel\\wwwroot\\images\\hotel.jpg",
+      "SourceId": "ReservaHotel",
+      "SourceType": "Discovered",
+      "ContentRoot": "F:\\Repos\\Reserva Hotel\\ReservaHotel\\ReservaHotel\\wwwroot\\",
+      "BasePath": "_content/ReservaHotel",
+      "RelativePath": "images/hotel.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\images\\hotel.jpg"
     },
     {
       "Identity": "F:\\Repos\\Reserva Hotel\\ReservaHotel\\ReservaHotel\\wwwroot\\js\\site.js",

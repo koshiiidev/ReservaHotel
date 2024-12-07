@@ -13,6 +13,10 @@
       "PackagePath": "staticwebassets\\favicon.ico"
     },
     {
+      "Id": "F:\\Repos\\Reserva Hotel\\ReservaHotel\\ReservaHotel\\wwwroot\\images\\hotel.jpg",
+      "PackagePath": "staticwebassets\\images\\hotel.jpg"
+    },
+    {
       "Id": "F:\\Repos\\Reserva Hotel\\ReservaHotel\\ReservaHotel\\wwwroot\\js\\site.js",
       "PackagePath": "staticwebassets\\js\\site.js"
     },

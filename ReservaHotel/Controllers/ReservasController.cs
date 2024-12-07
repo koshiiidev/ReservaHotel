@@ -13,20 +13,23 @@ using ReservaHotel.Models;
 using ReservaHotel.Services;
 
 
+
 namespace ReservaHotel.Controllers
 {
     public class ReservasController : Controller
     {
-
+        private readonly ApplicationDbContext _context;
         private readonly IReservaService _reservaService;
         private readonly UserManager<Usuario> _userManager;
         private readonly IUserService _userService;
 
         public ReservasController(
+            ApplicationDbContext context,
             IReservaService reservaService, 
             UserManager<Usuario> userManager,
             IUserService userService)
         {
+            _context = context;
             _reservaService = reservaService ?? throw new ArgumentNullException(nameof(reservaService));
             _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
             _userService = userService;
@@ -38,7 +41,20 @@ namespace ReservaHotel.Controllers
         [Authorize(Roles = "Admin, Cliente")]
         public async Task<IActionResult> Index()
         {
+            var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var isAdmin = User?.IsInRole("Admin") ?? false;
             var reservas = await _reservaService.ObtenerTodasAsync();
+
+            // Si no es admin, solo mostrar sus propias reservas
+            if (!isAdmin)
+            {
+                reservas = reservas.Where(r => r.UserId == userId);
+            }
             return View(reservas);
         }
 
@@ -82,26 +98,35 @@ namespace ReservaHotel.Controllers
         [Authorize(Roles = "Admin, Cliente")]
         public async Task<IActionResult> Create([Bind("NombreCliente,FechaInicio,FechaFin,NumeroHabitacion,Estado")] Reserva reserva)
         {
-           if (ModelState.IsValid)
+
+            try
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if(string.IsNullOrEmpty(userId))
+                // Limpiar el ModelState del UserId ya que lo vamos a asignar manualmente
+                ModelState.Remove("UserId");
+                ModelState.Remove("User");
+
+                // Asignar el UserId
+                reserva.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (ModelState.IsValid)
                 {
-                    return Unauthorized();
+                    reserva.Estado = EstadoReserva.Pendiente;
+                    var success = await _reservaService.CrearAsync(reserva);
+
+                    if (success)
+                    {
+                        TempData["Success"] = "Reserva creada exitosamente.";
+                        return RedirectToAction(nameof(Index));
+                    }
+
+                    ModelState.AddModelError("", "No se pudo crear la reserva. Verifica que la habitación esté disponible para las fechas seleccionadas.");
                 }
-
-                reserva.UserId = userId;
-                
-
-                var succes = await _reservaService.CrearAsync(reserva);
-                if (succes) 
-                {
-                    TempData["Success"] = "Reserva creada exitosamente";
-                    return RedirectToAction(nameof(Index));
-                }
-
-                ModelState.AddModelError("", "La habitacion no esta disponible para las fechas seleccionadas o las fechas son invalidas.");
             }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", "Ocurrió un error al crear la reserva: " + ex.Message);
+            }
+
 
             ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
                 .Cast<EstadoReserva>()
@@ -146,7 +171,7 @@ namespace ReservaHotel.Controllers
 
             // GET: Reservas/Edit/5
             //[Authorize(Roles = "Cliente")]
-            [Authorize(Roles = "Admin, Cliente")]
+        [Authorize(Roles = "Admin, Cliente")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -154,11 +179,29 @@ namespace ReservaHotel.Controllers
                 return NotFound();
             }
 
-            var reserva = await _reservaService.ObtenerPorIdAsync(id.Value);
+            var reserva = await _context.Reserva
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
             if (reserva == null)
             {
                 return NotFound();
             }
+
+
+            var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var isAdmin = User?.IsInRole("Admin") ?? false;
+
+            if (!isAdmin && reserva.UserId != userId)
+            {
+                return Forbid();
+            }
+
 
             ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
                 .Cast<EstadoReserva>()
@@ -175,31 +218,72 @@ namespace ReservaHotel.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,NombreCliente,FechaInicio,FechaFin,NumeroHabitacion,Estado")] Reserva reserva)
+        [Authorize(Roles = "Admin, Cliente")]
+        public async Task<IActionResult> Edit(int id, [Bind("Id,NombreCliente,FechaInicio,FechaFin,NumeroHabitacion,Estado, UserId")] Reserva reserva)
         {
-            if (id != reserva.Id)
+            System.Diagnostics.Debug.WriteLine($"Edit POST iniciado - ID: {id}");
+            System.Diagnostics.Debug.WriteLine($"Datos de reserva: Inicio={reserva.FechaInicio}, Fin={reserva.FechaFin}, Cliente={reserva.NombreCliente}");
+
+            System.Diagnostics.Debug.WriteLine($"Edit POST iniciado - ID: {id}");
+            System.Diagnostics.Debug.WriteLine($"Datos de reserva: Inicio={reserva.FechaInicio}, Fin={reserva.FechaFin}, Cliente={reserva.NombreCliente}");
+
+            try
             {
-                return NotFound();
+                // Obtener la reserva original primero
+                var reservaOriginal = await _context.Reserva
+                    .Include(r => r.User)
+                    .FirstOrDefaultAsync(r => r.Id == id);
+
+                if (reservaOriginal == null)
+                {
+                    return NotFound();
+                }
+
+                // Asignar el UserId ANTES de verificar ModelState
+                reserva.UserId = reservaOriginal.UserId;
+                reserva.User = reservaOriginal.User;
+
+                // Limpiar y revalidar ModelState
+                ModelState.Remove("UserId");
+                ModelState.Remove("User");
+
+                if (ModelState.IsValid)
+                {
+                    try
+                    {
+                        var success = await _reservaService.ActualizarAsync(reserva);
+                        System.Diagnostics.Debug.WriteLine($"Resultado de ActualizarAsync: {success}");
+
+                        if (success)
+                        {
+                            TempData["Success"] = "Reserva actualizada exitosamente.";
+                            return RedirectToAction(nameof(Index));
+                        }
+
+                        ModelState.AddModelError("", "No se pudo actualizar la reserva. Verifica las fechas y disponibilidad de la habitación.");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error en actualización: {ex.Message}");
+                        ModelState.AddModelError("", $"Error al actualizar: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("ModelState no es válido:");
+                    foreach (var modelState in ModelState.Values)
+                    {
+                        foreach (var error in modelState.Errors)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error: {error.ErrorMessage}");
+                        }
+                    }
+                }
             }
-
-            if (ModelState.IsValid)
+            catch (Exception ex)
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userId))
-                {
-                    return Unauthorized();
-                }
-                reserva.UserId = userId;
-
-                var success = await _reservaService.ActualizarAsync(reserva);
-                if (success) 
-                {
-                    TempData["Success"] = "Reserva actualizada exitosamente. ";
-                    return RedirectToAction(nameof(Index));
-                }
-
-                ModelState.AddModelError("", "La habitacion no esta disponible para las fechas seleccionadas o las fechas son invalidas. ");
-               
+                System.Diagnostics.Debug.WriteLine($"Error general: {ex.Message}");
+                ModelState.AddModelError("", $"Error general: {ex.Message}");
             }
 
             ViewBag.Estados = Enum.GetValues(typeof(EstadoReserva))
@@ -212,8 +296,10 @@ namespace ReservaHotel.Controllers
             return View(reserva);
         }
 
-        [Authorize(Roles = "Admin, Cliente")]
+
+
         // GET: Reservas/Delete/5
+        [Authorize(Roles = "Admin, Cliente")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -227,12 +313,25 @@ namespace ReservaHotel.Controllers
                 return NotFound();
             }
 
+            var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var isAdmin = User?.IsInRole("Admin") ?? false;
+            if (!isAdmin && reserva.UserId != userId)
+            {
+                return Forbid();
+            }
+
             return View(reserva);
         }
 
         // POST: Reservas/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin, Cliente")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             await _reservaService.EliminarAsync(id);
